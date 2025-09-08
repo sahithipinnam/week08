@@ -10,11 +10,6 @@ on:
       - 'frontend/**'
       - '.github/workflows/frontend_ci.yml'
 
-env:
-  ACR_NAME: ${{ secrets.ACR_NAME }}
-  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
-  IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
-
 jobs:
   build_and_push_frontend:
     runs-on: ubuntu-latest
@@ -28,18 +23,21 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Login to Azure Container Registry
-        run: az acr login --name ${{ env.ACR_NAME }}
+        run: az acr login --name ${{ secrets.ACR_NAME }}
 
       - name: Build and Push Frontend
+        env:
+          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
         run: |
           echo "🚀 Building frontend image..."
-          docker build -t ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} ./frontend
-          echo "✅ Pushing versioned tag: ${{ env.IMAGE_TAG }}"
-          docker push ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }}
+          docker build -t $ACR_LOGIN_SERVER/frontend:$IMAGE_TAG ./frontend
+          echo "✅ Pushing versioned tag: $IMAGE_TAG"
+          docker push $ACR_LOGIN_SERVER/frontend:$IMAGE_TAG
 
           echo "✅ Tagging and pushing 'latest'"
-          docker tag ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} ${{ env.ACR_LOGIN_SERVER }}/frontend:latest
-          docker push ${{ env.ACR_LOGIN_SERVER }}/frontend:latest
+          docker tag $ACR_LOGIN_SERVER/frontend:$IMAGE_TAG $ACR_LOGIN_SERVER/frontend:latest
+          docker push $ACR_LOGIN_SERVER/frontend:latest
 
       - name: Logout
         run: az logout
