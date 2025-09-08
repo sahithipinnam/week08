@@ -26,18 +26,16 @@ jobs:
         run: az acr login --name ${{ secrets.ACR_NAME }}
 
       - name: Build and Push Frontend
-        env:
-          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
-          IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
         run: |
           echo "🚀 Building frontend image..."
-          docker build -t $ACR_LOGIN_SERVER/frontend:$IMAGE_TAG ./frontend
-          echo "✅ Pushing versioned tag: $IMAGE_TAG"
-          docker push $ACR_LOGIN_SERVER/frontend:$IMAGE_TAG
+          docker build ./frontend -t ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }}-${{ github.run_id }}
+
+          echo "✅ Pushing versioned tag"
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }}-${{ github.run_id }}
 
           echo "✅ Tagging and pushing 'latest'"
-          docker tag $ACR_LOGIN_SERVER/frontend:$IMAGE_TAG $ACR_LOGIN_SERVER/frontend:latest
-          docker push $ACR_LOGIN_SERVER/frontend:latest
+          docker tag ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }}-${{ github.run_id }} ${{ secrets.ACR_LOGIN_SERVER }}/frontend:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/frontend:latest
 
       - name: Logout
         run: az logout
