@@ -32,10 +32,12 @@ jobs:
 
       - name: Build and Push Frontend
         run: |
+          echo "🚀 Building frontend image..."
           docker build -t ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} ./frontend
+          echo "✅ Pushing versioned tag: ${{ env.IMAGE_TAG }}"
           docker push ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }}
 
-          # Also push 'latest' for convenience
+          echo "✅ Tagging and pushing 'latest'"
           docker tag ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} ${{ env.ACR_LOGIN_SERVER }}/frontend:latest
           docker push ${{ env.ACR_LOGIN_SERVER }}/frontend:latest
 
