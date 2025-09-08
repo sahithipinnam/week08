@@ -1,19 +1,15 @@
-name: CD - Deploy Backend Services to AKS
+name: Backend CD - Deploy to AKS
 
 on:
   workflow_dispatch:
-    inputs:
-      aks_cluster_name:
-        default: 'week08-aks'
-      aks_resource_group:
-        default: 'week08-rg'
-      aks_acr_name:
-        default: 'week08acr5678'
+  workflow_run:
+    workflows: ["Backend CI - Test, Build and Push Images to ACR"]
+    types:
+      - completed
 
 jobs:
   deploy_backend:
     runs-on: ubuntu-latest
-    environment: Production
 
     steps:
       - uses: actions/checkout@v4
@@ -23,30 +19,22 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Get AKS Credentials
-        run: |
-          az aks get-credentials --resource-group ${{ github.event.inputs.aks_resource_group }} \
-            --name ${{ github.event.inputs.aks_cluster_name }} --overwrite-existing
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          cluster-name: week08-aks
+          resource-group: week08-rg
 
-      - name: Attach ACR
+      - name: Deploy Backend Services
         run: |
-          az aks update --name ${{ github.event.inputs.aks_cluster_name }} \
-            --resource-group ${{ github.event.inputs.aks_resource_group }} \
-            --attach-acr ${{ github.event.inputs.aks_acr_name }}
+          IMAGE_TAG=${{ github.sha }}-${{ github.run_id }}
+          ACR=${{ secrets.ACR_LOGIN_SERVER }}
 
-      - name: Deploy Backend Infrastructure
-        run: |
-          cd k8s/
-          kubectl apply -f configmaps.yaml
-          kubectl apply -f secrets.yaml
-          kubectl apply -f product-db.yaml
-          kubectl apply -f order-db.yaml
+          echo "🔧 Updating Kubernetes manifests with $IMAGE_TAG"
 
-      - name: Deploy Backend Microservices
-        run: |
-          cd k8s/
-          kubectl apply -f product-service.yaml
-          kubectl apply -f order-service.yaml
+          sed -i "s|image: .*/product_service:.*|image: $ACR/product_service:$IMAGE_TAG|" ./k8s/product-deployment.yaml
+          sed -i "s|image: .*/order_service:.*|image: $ACR/order_service:$IMAGE_TAG|" ./k8s/order-deployment.yaml
 
-      - name: Logout
-        run: az logout
+          kubectl apply -f ./k8s/product-deployment.yaml
+          kubectl apply -f ./k8s/order-deployment.yaml
