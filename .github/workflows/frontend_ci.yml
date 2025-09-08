@@ -1,17 +1,18 @@
-name: Frontend CI - Build & Push Image
+name: Frontend CI - Build and Push Images to ACR
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+      - dev
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend_ci.yml'
 
 env:
-  ACR_NAME: week08acr5678
-  ACR_LOGIN_SERVER: week08acr5678.azurecr.io
+  ACR_NAME: ${{ secrets.ACR_NAME }}
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
   IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
 
 jobs:
@@ -26,12 +27,16 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Login to ACR
+      - name: Login to Azure Container Registry
         run: az acr login --name ${{ env.ACR_NAME }}
 
       - name: Build and Push Frontend
         run: |
-          docker build -t ${{ env.ACR_LOGIN_SERVER }}/frontend:latest ./frontend/
+          docker build -t ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} ./frontend
+          docker push ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }}
+
+          # Also push 'latest' for convenience
+          docker tag ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} ${{ env.ACR_LOGIN_SERVER }}/frontend:latest
           docker push ${{ env.ACR_LOGIN_SERVER }}/frontend:latest
 
       - name: Logout
